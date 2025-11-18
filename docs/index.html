@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>My To do List</title>
+<style>
+  :root{
+    --bg: #f6fbff;
+    --card: #ffffff;
+    --accent: #2196f3;
+    --accent-600: #1976d2;
+    --muted: #6b7280;
+    --success: #16a34a;
+    --danger: #ef4444;
+    --glass: rgba(255,255,255,0.8);
+    --radius: 12px;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+
+  /* page layout */
+  html,body{height:100%}
+  body{
+    margin:0;
+    background: linear-gradient(180deg, #e9f1ff 0%, #f8fbff 60%);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+    color:#0f172a;
+  }
+
+  .wrap{
+    width:100%;
+    max-width:880px;
+  }
+
+  header{
+    text-align:center;
+    margin-bottom:28px;
+  }
+  h1{
+    margin:0;
+    font-size:clamp(22px, 4vw, 40px);
+    letter-spacing:0.5px;
+    font-weight:700;
+    color:#0b1826;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+  }
+
+  /* add area */
+  .input-row{
+    display:flex;
+    gap:14px;
+    align-items:center;
+    margin-bottom:26px;
+  }
+  .task-input{
+    flex:1;
+    background:var(--card);
+    border-radius:12px;
+    padding:16px 18px;
+    box-shadow: 0 6px 18px rgba(16,24,40,0.06);
+    border:1px solid rgba(16,24,40,0.04);
+    font-size:16px;
+    outline:none;
+    transition: transform .12s ease, box-shadow .12s;
+  }
+  .task-input:focus{
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(33,150,243,0.12);
+    border-color: var(--accent-600);
+  }
+  .add-btn{
+    background: linear-gradient(180deg,var(--accent),var(--accent-600));
+    color:white;
+    border:none;
+    padding:12px 18px;
+    border-radius:12px;
+    font-weight:700;
+    box-shadow: 0 6px 18px rgba(25,118,210,0.16);
+    cursor:pointer;
+    min-width:110px;
+    transition: transform .12s ease, opacity .12s;
+  }
+  .add-btn:active{ transform: translateY(1px) }
+  .add-btn[disabled]{ opacity:0.6; cursor:not-allowed; }
+
+  /* empty state */
+  .empty{
+    text-align:center;
+    color:var(--muted);
+    padding:32px 12px;
+  }
+
+  /* list */
+  .list{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .task{
+    background:var(--card);
+    border-radius:12px;
+    padding:14px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    box-shadow: 0 6px 20px rgba(10,20,40,0.05);
+    border:1px solid rgba(16,24,40,0.03);
+    transform-origin:left center;
+    overflow:hidden;
+    position:relative;
+    transition: transform .18s cubic-bezier(.2,.9,.3,1), opacity .18s ease;
+  }
+
+  /* appear animation */
+  .task.enter{
+    animation: slideIn .32s ease both;
+  }
+  @keyframes slideIn{
+    from{ transform: translateY(8px) scale(.995); opacity:0 }
+    to{ transform: translateY(0) scale(1); opacity:1 }
+  }
+
+  /* delete animation (fade + shrink) */
+  .task.exit{
+    animation: shrinkOut .28s ease both;
+  }
+  @keyframes shrinkOut{
+    to{ transform: translateY(8px) scale(.95); opacity:0; height:0; margin:0; padding:0 }
+  }
+
+  .task .left{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex:1;
+    min-width:0;
+  }
+
+  .checkbox{
+    width:22px;height:22px;border-radius:6px;border:2px solid rgba(16,24,40,0.12);
+    display:inline-grid;place-items:center;
+    cursor:pointer;
+    transition: background .12s, border-color .12s, transform .12s;
+    flex-shrink:0;
+  }
+  .checkbox.checked{
+    background:var(--accent);
+    border-color:var(--accent-600);
+    transform: scale(.98);
+  }
+  .checkbox svg{ width:14px;height:14px; fill: white; display:block; opacity:0; transform:scale(.8); transition: opacity .12s, transform .12s; }
+  .checkbox.checked svg{ opacity:1; transform:scale(1); }
+
+  .title{
+    font-size:15px;
+    color:#0f172a;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .title.completed{
+    text-decoration:line-through;
+    color:var(--muted);
+    opacity:.9;
+  }
+
+  .meta{
+    font-size:12px;color:var(--muted); margin-top:6px;
+  }
+
+  .actions{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-left:12px;
+  }
+  .icon-btn{
+    border:none;background:transparent;padding:8px;border-radius:8px;cursor:pointer;
+    display:inline-grid;place-items:center;
+    transition: background .12s, transform .12s;
+  }
+  .icon-btn:hover{ background: rgba(16,24,40,0.04); transform: translateY(-2px) }
+  .icon{
+    width:18px;height:18px;opacity:.9;
+  }
+
+  /* inline edit style */
+  .edit-input{
+    width:100%;
+    font-size:15px;
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid rgba(16,24,40,0.06);
+    box-shadow:none;
+  }
+  .edit-controls{ display:flex; gap:8px; margin-left:8px; }
+
+  /* small screens */
+  @media (max-width:560px){
+    .input-row{ flex-direction:column; align-items:stretch; }
+    .add-btn{ width:100%; min-width:0; }
+    .actions { margin-left:8px; }
+  }
+
+  /* subtle bounce when marking complete */
+  .task.bounce{
+    animation: bounce .32s ease;
+  }
+  @keyframes bounce{
+    0%{ transform: translateY(0) }
+    40%{ transform: translateY(-6px) scale(1.01) }
+    100%{ transform: translateY(0) }
+  }
+
+  /* small helper text under the input */
+  .hint{ color:var(--muted); font-size:13px; margin-top:8px; text-align:center }
+</style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="Todo app">
+    <header>
+      <h1>My To do List</h1>
+    </header>
+
+    <div class="input-row" aria-hidden="false">
+      <input id="newTask" class="task-input" type="text" placeholder="What needs to be done?" aria-label="New task description" maxlength="200" />
+      <button id="addBtn" class="add-btn" aria-label="Add task">Add Task</button>
+    </div>
+    <div class="hint">Press Enter to add. Tasks are saved to your browser (localStorage).</div>
+
+    <main id="mainArea" style="margin-top:18px;">
+      <div id="empty" class="empty">No tasks yet. Add one to get started! ✨</div>
+      <div id="list" class="list" aria-live="polite"></div>
+    </main>
+  </div>
+
+<script>
+/* Simple responsive todo app with localStorage
+   - create tasks with text
+   - edit inline
+   - delete with animation
+   - toggle complete
+   - tasks persist in localStorage
+*/
+
+const STORAGE_KEY = 'my_todo_list_v1';
+const listEl = document.getElementById('list');
+const emptyEl = document.getElementById('empty');
+const newTaskInput = document.getElementById('newTask');
+const addBtn = document.getElementById('addBtn');
+
+let tasks = []; // {id, text, completed, createdAt}
+
+/* Utility to generate IDs */
+function uid(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+/* Load and save */
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    tasks = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    tasks = [];
+    console.error('Could not parse storage', e);
+  }
+}
+
+/* Render UI */
+function render(){
+  listEl.innerHTML = '';
+  if(tasks.length === 0){
+    emptyEl.style.display = 'block';
+  } else {
+    emptyEl.style.display = 'none';
+    // newest first
+    tasks.slice().reverse().forEach(t => {
+      const taskEl = createTaskElement(t);
+      listEl.appendChild(taskEl);
+      // entrance animation class
+      requestAnimationFrame(()=> taskEl.classList.add('enter'));
+    });
+  }
+}
+
+/* Create DOM for a task */
+function createTaskElement(task){
+  const el = document.createElement('div');
+  el.className = 'task';
+  el.dataset.id = task.id;
+
+  // left side (checkbox + content)
+  const left = document.createElement('div'); left.className = 'left';
+
+  const checkbox = document.createElement('button');
+  checkbox.className = 'checkbox' + (task.completed ? ' checked' : '');
+  checkbox.setAttribute('aria-label', task.completed ? 'Mark as incomplete' : 'Mark as complete');
+  checkbox.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.3 6.3a1 1 0 0 0-1.6-1.2L9 14.8 5.3 11.1A1 1 0 1 0 3.9 12.5l4 4a1 1 0 0 0 1.4 0l10-10z"/></svg>`;
+  left.appendChild(checkbox);
+
+  const textWrap = document.createElement('div'); textWrap.style.minWidth = '0';
+  const title = document.createElement('div');
+  title.className = 'title' + (task.completed ? ' completed' : '');
+  title.textContent = task.text;
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const d = new Date(task.createdAt);
+  meta.textContent = d.toLocaleString();
+
+  textWrap.appendChild(title);
+  textWrap.appendChild(meta);
+  left.appendChild(textWrap);
+
+  // actions
+  const actions = document.createElement('div'); actions.className = 'actions';
+
+  // edit button
+  const editBtn = document.createElement('button');
+  editBtn.className = 'icon-btn';
+  editBtn.title = 'Edit';
+  editBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+  actions.appendChild(editBtn);
+
+  // delete button
+  const delBtn = document.createElement('button');
+  delBtn.className = 'icon-btn';
+  delBtn.title = 'Delete';
+  delBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+  actions.appendChild(delBtn);
+
+  el.appendChild(left);
+  el.appendChild(actions);
+
+  /* EVENTS */
+
+  // toggle complete
+  checkbox.addEventListener('click', () => {
+    task.completed = !task.completed;
+    // visual
+    checkbox.classList.toggle('checked', task.completed);
+    title.classList.toggle('completed', task.completed);
+    el.classList.add('bounce');
+    setTimeout(()=> el.classList.remove('bounce'), 300);
+    checkbox.setAttribute('aria-label', task.completed ? 'Mark as incomplete' : 'Mark as complete');
+    // update store
+    save();
+  });
+
+  // edit inline
+  editBtn.addEventListener('click', () => {
+    startEdit(el, task, title, meta);
+  });
+
+  // delete with animation
+  delBtn.addEventListener('click', () => {
+    // add exit animation class then remove after animation
+    el.classList.add('exit');
+    // remove from tasks array
+    tasks = tasks.filter(t=> t.id !== task.id);
+    save();
+    el.addEventListener('animationend', () => {
+      render();
+    }, {once:true});
+  });
+
+  return el;
+}
+
+/* Inline editing: replace title with input + save/cancel controls */
+function startEdit(taskEl, task, titleEl, metaEl){
+  // prevent multiple editors
+  if(taskEl.querySelector('.edit-input')) return;
+
+  const left = taskEl.querySelector('.left');
+  const textWrap = left.querySelector('div:nth-child(2)');
+  const originalText = task.text;
+
+  // create input
+  const input = document.createElement('input');
+  input.className = 'edit-input';
+  input.value = originalText;
+  input.maxLength = 200;
+  input.setAttribute('aria-label', 'Edit task');
+
+  // create controls
+  const controls = document.createElement('div');
+  controls.className = 'edit-controls';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'add-btn';
+  saveBtn.style.padding = '8px 12px';
+  saveBtn.textContent = 'Save';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'icon-btn';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.borderRadius = '8px';
+
+  controls.appendChild(saveBtn);
+  controls.appendChild(cancelBtn);
+
+  // replace title/meta with input and controls
+  textWrap.innerHTML = '';
+  textWrap.appendChild(input);
+  textWrap.appendChild(controls);
+
+  input.focus();
+  input.select();
+
+  // handlers
+  saveBtn.addEventListener('click', commit);
+  cancelBtn.addEventListener('click', undo);
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') commit();
+    if(e.key === 'Escape') undo();
+  });
+
+  function commit(){
+    const val = input.value.trim();
+    if(!val) { input.classList.add('invalid'); input.focus(); return; }
+    task.text = val;
+    save();
+    // restore normal display
+    render();
+  }
+  function undo(){
+    render();
+  }
+}
+
+/* Add new */
+function addNew(){
+  const v = newTaskInput.value.trim();
+  if(!v) return;
+  const t = { id: uid(), text: v, completed: false, createdAt: new Date().toISOString() };
+  tasks.push(t);
+  save();
+  newTaskInput.value = '';
+  // Re-render but keep nice animation: append new element at top
+  render();
+  // focus input again
+  newTaskInput.focus();
+}
+
+/* init */
+function init(){
+  load();
+  render();
+
+  addBtn.addEventListener('click', addNew);
+  newTaskInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ addNew(); }
+  });
+
+  // basic accessibility: disable add when input empty
+  function updateAddState(){
+    addBtn.disabled = newTaskInput.value.trim() === '';
+  }
+  newTaskInput.addEventListener('input', updateAddState);
+  updateAddState();
+}
+
+init();
+</script>
+</body>
+</html>
